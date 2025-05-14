@@ -1,24 +1,51 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import Header from "./components/Header";
 import JobCard from "./components/JobCard";
 import JobDetails from "./components/JobDetails";
-import { jobs } from "./data";
 
 const JOBS_PER_PAGE = 9;
 
 function App() {
+  const [jobs, setJobs] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [locationFilter, setLocationFilter] = useState("");
   const [salaryFilter, setSalaryFilter] = useState("");
   const [jobTypeFilter, setJobTypeFilter] = useState([]);
   const [remoteFilter, setRemoteFilter] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  // Extract filter options
   const locations = [...new Set(jobs.map((job) => job.location))];
   const salaries = ["0-70k", "70k-100k", "100k-130k", "130k+"];
   const jobTypes = ["Full-time", "Internship"];
   const remoteOptions = ["Remote", "On-site"];
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/jobs");
+        if (!response.ok) throw new Error("Failed to load jobs");
+        const data = await response.json();
+
+        // Add fallback ID in case backend doesn't provide one
+        const jobsWithId = data.map((job, index) => ({
+          ...job,
+          id: job.id || job._id || `fallback-${index}`,
+        }));
+
+        setJobs(jobsWithId);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, []);
 
   // 🔍 Filtering logic
   const filteredJobs = jobs.filter((job) => {
@@ -27,44 +54,39 @@ function App() {
         val &&
         val.toString().toLowerCase().includes(searchTerm.toLowerCase())
     );
-
     const matchesLocation = locationFilter ? job.location === locationFilter : true;
 
     let matchesSalary = true;
+    if (salaryFilter) {
+      let min, max;
+      switch (salaryFilter) {
+        case "0-70k":
+          min = 0;
+          max = 70000;
+          break;
+        case "70k-100k":
+          min = 70000;
+          max = 100000;
+          break;
+        case "100k-130k":
+          min = 100000;
+          max = 130000;
+          break;
+        case "130k+":
+          min = 130000;
+          max = Infinity;
+          break;
+        default:
+          break;
+      }
 
-if (salaryFilter) {
-  let min, max;
+      const jobMinSalary = parseInt(job.salary.split(" - ")[0].replace(/[^0-9]/g, ""));
+      matchesSalary = jobMinSalary >= min && jobMinSalary <= max;
+    }
 
-  switch (salaryFilter) {
-    case "0-70k":
-      min = 0;
-      max = 70000;
-      break;
-    case "70k-100k":
-      min = 70000;
-      max = 100000;
-      break;
-    case "100k-130k":
-      min = 100000;
-      max = 130000;
-      break;
-    case "130k+":
-      min = 130000;
-      max = Infinity;
-      break;
-    default:
-      break;
-  }
-
-  // Extract first number from salary string like "80000 - 100000"
-  const jobMinSalary = parseInt(job.salary.split(" - ")[0].replace(/[^0-9]/g, ""));
-
-  matchesSalary = jobMinSalary >= min && jobMinSalary <= max;
-}
-
-const matchesJobType = jobTypeFilter.length > 0
-  ? jobTypeFilter.some((type) => job.type === type)
-  : true;
+    const matchesJobType = jobTypeFilter.length > 0
+      ? jobTypeFilter.some((type) => job.type === type)
+      : true;
 
     const matchesRemote = remoteFilter.length > 0
       ? remoteFilter.some((mode) => (job.remote ? "Remote" : "On-site") === mode)
@@ -82,22 +104,33 @@ const matchesJobType = jobTypeFilter.length > 0
   const handleNextPage = () => {
     if (currentPage < totalPages) setCurrentPage(currentPage + 1);
   };
-
   const handlePrevPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
   };
+
+  if (error) {
+    return (
+      <div className="text-center text-red-500 py-10">
+        Error fetching jobs: {error}
+      </div>
+    );
+  }
+
+  if (loading || jobs.length === 0) {
+    return (
+      <div className="text-center py-10">Loading jobs...</div>
+    );
+  }
 
   return (
     <Router>
       <div className="min-h-screen bg-gray-100">
         <Header onSearch={setSearchTerm} />
-
         <main className="container mx-auto px-4 py-8 pt-24">
           <h1 className="text-3xl font-bold mb-6 text-gray-800">Available Jobs</h1>
-
           <div className="flex flex-col md:flex-row gap-6">
-            {/* 🔍 Left Sidebar Filters */}
-            <aside className="w-full min-h-screen md:w-64 bg-white p-4 rounded-lg shadow-md">
+            {/* Sidebar Filters */}
+            <aside className="w-full md:w-64 bg-white p-4 rounded-lg shadow-md">
               <h2 className="text-xl font-semibold mb-4 border-b pb-2">Filters</h2>
 
               {/* Location Filter */}
@@ -134,54 +167,46 @@ const matchesJobType = jobTypeFilter.length > 0
                 </select>
               </div>
 
-              {/* Job Type (Collapsible Section) */}
+              {/* Job Type */}
               <div className="mb-6">
                 <h3 className="font-medium mb-2 cursor-pointer">
                   Job Type <span className="text-sm text-gray-500">({jobTypeFilter.length})</span>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (jobTypeFilter.length > 0) {
-                        setJobTypeFilter([]);
-                      }
-                    }}
+                    onClick={() => setJobTypeFilter([])}
                     className="float-right text-gray-500 hover:text-gray-700"
                   >
                     Clear
                   </button>
                 </h3>
                 <div>
-                 {jobTypes.map((type) => (
-                  <label key={type} className="flex items-center mb-2">
-                    <input
-                      type="checkbox"
-                      checked={jobTypeFilter.includes(type)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setJobTypeFilter([...jobTypeFilter, type]);
-                        } else {
-                          setJobTypeFilter(jobTypeFilter.filter((t) => t !== type));
-                        }
-                      }}
-                      className="mr-2"
-                    />
-                    <span>{type}</span>
-                  </label>
-                ))}
+                  {jobTypes.map((type) => (
+                    <label key={type} className="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        checked={jobTypeFilter.includes(type)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setJobTypeFilter([...jobTypeFilter, type]);
+                          } else {
+                            setJobTypeFilter(jobTypeFilter.filter((t) => t !== type));
+                          }
+                        }}
+                        className="mr-2"
+                      />
+                      <span>{type}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
 
-              {/* Remote Work (Collapsible Section) */}
+              {/* Remote Work */}
               <div className="mb-6">
                 <h3 className="font-medium mb-2 cursor-pointer">
                   Work Mode <span className="text-sm text-gray-500">({remoteFilter.length})</span>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (remoteFilter.length > 0) {
-                        setRemoteFilter([]);
-                      }
-                    }}
+                    onClick={() => setRemoteFilter([])}
                     className="float-right text-gray-500 hover:text-gray-700"
                   >
                     Clear
@@ -209,14 +234,14 @@ const matchesJobType = jobTypeFilter.length > 0
               </div>
             </aside>
 
-            {/* 📦 Right Side - Job Results */}
+            {/* Job Results */}
             <section className="flex-1">
               <Routes>
                 <Route
                   path="/"
                   element={
                     <>
-                      <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {paginatedJobs.map((job) => (
                           <Link key={job.id} to={`/job/${job.id}`} className="block">
                             <JobCard job={job} />
@@ -238,7 +263,6 @@ const matchesJobType = jobTypeFilter.length > 0
                           >
                             Prev
                           </button>
-
                           {[...Array(totalPages)].map((_, i) => (
                             <button
                               key={i + 1}
@@ -252,7 +276,6 @@ const matchesJobType = jobTypeFilter.length > 0
                               {i + 1}
                             </button>
                           ))}
-
                           <button
                             onClick={handleNextPage}
                             disabled={currentPage === totalPages}
@@ -269,8 +292,7 @@ const matchesJobType = jobTypeFilter.length > 0
                     </>
                   }
                 />
-
-                <Route path="/job/:id" element={<JobDetails jobs={jobs} />} />
+                <Route path="/job/:id" element={<JobDetails />} />
               </Routes>
 
               {/* No Jobs Found */}
