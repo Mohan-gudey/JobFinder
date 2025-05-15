@@ -4,7 +4,7 @@ import Header from "./components/Header";
 import JobCard from "./components/JobCard";
 import JobDetails from "./components/JobDetails";
 
-const JOBS_PER_PAGE = 9;
+const JOBS_PER_PAGE = 5;
 
 function App() {
   const [jobs, setJobs] = useState([]);
@@ -130,7 +130,7 @@ function App() {
           <h1 className="text-3xl font-bold mb-6 text-gray-800">Available Jobs</h1>
           <div className="flex flex-col md:flex-row gap-6">
             {/* Sidebar Filters */}
-            <aside className="w-full md:w-64 bg-white p-4 rounded-lg shadow-md">
+            <aside className="w-full md:w-64 bg-white p-4 rounded-lg h-[80vh] shadow-md">
               <h2 className="text-xl font-semibold mb-4 border-b pb-2">Filters</h2>
 
               {/* Location Filter */}
@@ -241,7 +241,7 @@ function App() {
                   path="/"
                   element={
                     <>
-                      <div className="grid grid-cols-1 gap-6">
+                      <div className="grid grid-cols-1 gap-6  max-h-[80vh] overflow-y-scroll">
                         {paginatedJobs.map((job) => (
                           <Link key={job.id} to={`/job/${job.id}`} className="block">
                             <JobCard job={job} />

@@ -12,9 +12,7 @@ const JobCard = ({ job }) => {
           <h2 className="text-xl font-semibold">{job.title}</h2>
           <p className="text-sm font-medium">
             {job.company}{" "}
-            <span className="text-yellow-500 ml-2">
-              ⭐ {job.rating} | {job.reviews} Reviews
-            </span>
+            
           </p>
         </div>
         {/* Company Logo */}

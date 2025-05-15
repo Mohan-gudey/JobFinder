@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-
+import { useNavigate } from "react-router-dom";
+import { IoArrowBack } from "react-icons/io5";
 const JobDetails = () => {
   const { id } = useParams();
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const navigate = useNavigate();
+  const handleBackClick = () => {
+      navigate(-1); // This will navigate to the previous page
+    };
   useEffect(() => {
     const fetchJob = async () => {
       try {
@@ -37,14 +41,16 @@ const JobDetails = () => {
   }
 
   return (
+    <div>
+       <button
+        onClick={handleBackClick}
+        className="flex items-center gap-2 text-gray-500 hover:text-gray-900 px-4 py-2 rounded mb-2"
+      >
+        <IoArrowBack /> Back to Job Listings
+      </button>
     <div className="bg-white rounded-lg shadow-md overflow-hidden p-6">
       <h1 className="text-2xl font-bold mb-4">{job.title}</h1>
       <p className="text-lg font-medium mb-2">{job.company}</p>
-      <div className="flex items-center space-x-4 text-gray-600 mb-4">
-        <span>⭐ {job.rating} | {job.reviews} Reviews</span>
-        <span>₹ {job.salary}</span>
-        <span>{job.location}</span>
-      </div>
       <h2 className="text-xl font-bold mb-2">Job Description</h2>
       <p className="mb-4">{job.description}</p>
       <h2 className="text-xl font-bold mb-2">Requirements</h2>
@@ -61,6 +67,13 @@ const JobDetails = () => {
         ))}
       </div>
       <p className="text-gray-500 mt-4">Posted: {job.posted}</p>
+      <button
+        onClick={() => window.open(job.applyLink, "_blank")}
+        className="bg-blue-500 px-3 py-2 mt-5 rounded-lg text-white"
+      >
+        Apply Now
+      </button>
+    </div>
     </div>
   );
 };
